@@ -27,6 +27,7 @@ void unpackBundle(MasonBundle bundle, Directory target) {
     environment: bundle.environment,
     vars: bundle.vars,
     repository: bundle.repository,
+    dependencies: bundle.dependencies,
   );
   File(path.join(target.path, BrickYaml.file)).writeAsStringSync(
     Yaml.encode(brickYaml.toJson()),
@@ -52,11 +53,7 @@ MasonBundle createBundle(Directory brick) {
     brickYamlFile.readAsStringSync(),
     (m) => BrickYaml.fromJson(m!),
   );
-  final files = Directory(path.join(brick.path, BrickYaml.dir))
-      .listSync(recursive: true)
-      .whereType<File>()
-      .map(_bundleBrickFile)
-      .toList();
+  final files = Directory(path.join(brick.path, BrickYaml.dir)).listSync(recursive: true).whereType<File>().map(_bundleBrickFile).toList();
   final hooksDirectory = Directory(path.join(brick.path, BrickYaml.hooks));
   final hooks = hooksDirectory.existsSync()
       ? hooksDirectory
@@ -78,6 +75,7 @@ MasonBundle createBundle(Directory brick) {
     readme: _bundleTopLevelFile(brick, 'README.md'),
     changelog: _bundleTopLevelFile(brick, 'CHANGELOG.md'),
     license: _bundleTopLevelFile(brick, 'LICENSE'),
+    dependencies: brickYaml.dependencies,
   );
 }
 
@@ -93,8 +91,7 @@ MasonBundledFile? _bundleTopLevelFile(Directory brick, String fileName) {
 }
 
 MasonBundledFile _bundleBrickFile(File file) {
-  final fileType =
-      _binaryFileTypes.hasMatch(path.basename(file.path)) ? 'binary' : 'text';
+  final fileType = _binaryFileTypes.hasMatch(path.basename(file.path)) ? 'binary' : 'text';
   final data = base64.encode(file.readAsBytesSync());
   final filePath = path.joinAll(
     path.split(file.path).skipWhile((value) => value != BrickYaml.dir).skip(1),

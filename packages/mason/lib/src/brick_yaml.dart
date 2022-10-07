@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:json_annotation/json_annotation.dart';
+import 'package:mason/src/mason_yaml.dart';
 import 'package:meta/meta.dart';
 
 part 'brick_yaml.g.dart';
@@ -21,6 +22,7 @@ class BrickYaml {
     this.vars = const <String, BrickVariableProperties>{},
     this.repository,
     this.path,
+    this.dependencies = const <String, BrickLocation>{},
   });
 
   /// Converts [Map] to [BrickYaml]
@@ -64,6 +66,9 @@ class BrickYaml {
   /// Path to the [BrickYaml] file.
   final String? path;
 
+  /// Brick dependencies.
+  final Map<String, BrickLocation> dependencies;
+
   /// Returns a copy of the current [BrickYaml] with
   /// an overridden [path].
   BrickYaml copyWith({String? path}) {
@@ -75,6 +80,7 @@ class BrickYaml {
       environment: environment,
       repository: repository,
       path: path ?? this.path,
+      dependencies: dependencies,
     );
   }
 

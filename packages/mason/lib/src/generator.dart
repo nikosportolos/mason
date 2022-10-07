@@ -51,6 +51,7 @@ class MasonGenerator extends Generator {
     List<TemplateFile?> files = const <TemplateFile>[],
     GeneratorHooks hooks = const GeneratorHooks(),
     this.vars = const <String>[],
+    this.dependencies = const <String, BrickLocation>{},
   }) : super(id, description, hooks) {
     for (final file in files) {
       addTemplateFile(file);
@@ -66,13 +67,14 @@ class MasonGenerator extends Generator {
       vars: bundle.vars.keys.toList(),
       files: _decodeConcatenatedData(bundle.files),
       hooks: GeneratorHooks.fromBundle(bundle),
+      dependencies: bundle.dependencies,
     );
   }
 
   /// Factory which creates a [MasonGenerator] based on
   /// a [GitPath] for a remote [BrickYaml] file.
   static Future<MasonGenerator> fromBrick(Brick brick) async {
-    final path = brick.location.path != null
+    final path = brick.location.path != null //
         ? brick.location.path!
         : (await BricksJson.temp().add(brick)).path;
     return MasonGenerator._fromBrick(path);
@@ -85,10 +87,7 @@ class MasonGenerator extends Generator {
       (m) => BrickYaml.fromJson(m!),
     ).copyWith(path: file.path);
     final brickDirectory = p.join(path, BrickYaml.dir);
-    final brickFiles = Directory(brickDirectory)
-        .listSync(recursive: true)
-        .whereType<File>()
-        .map((file) {
+    final brickFiles = Directory(brickDirectory).listSync(recursive: true).whereType<File>().map((file) {
       return () async {
         final resource = await _descriptorPool.request();
         try {
@@ -111,12 +110,16 @@ class MasonGenerator extends Generator {
       vars: brickYaml.vars.keys.toList(),
       files: await Future.wait(brickFiles),
       hooks: await GeneratorHooks.fromBrickYaml(brickYaml),
+      dependencies: brickYaml.dependencies,
     );
   }
 
   /// Optional list of variables which will be used to populate
   /// the corresponding mustache variables within the template.
   final List<String> vars;
+
+  /// Optional list of brick dependencies.
+  final Map<String, BrickLocation> dependencies;
 }
 
 /// The status of a generated file.
@@ -145,24 +148,19 @@ class GeneratedFile {
   const GeneratedFile._({required this.path, required this.status});
 
   /// {@macro generated_file}
-  const GeneratedFile.created({required String path})
-      : this._(path: path, status: GeneratedFileStatus.created);
+  const GeneratedFile.created({required String path}) : this._(path: path, status: GeneratedFileStatus.created);
 
   /// {@macro generated_file}
-  const GeneratedFile.overwritten({required String path})
-      : this._(path: path, status: GeneratedFileStatus.overwritten);
+  const GeneratedFile.overwritten({required String path}) : this._(path: path, status: GeneratedFileStatus.overwritten);
 
   /// {@macro generated_file}
-  const GeneratedFile.appended({required String path})
-      : this._(path: path, status: GeneratedFileStatus.appended);
+  const GeneratedFile.appended({required String path}) : this._(path: path, status: GeneratedFileStatus.appended);
 
   /// {@macro generated_file}
-  const GeneratedFile.skipped({required String path})
-      : this._(path: path, status: GeneratedFileStatus.skipped);
+  const GeneratedFile.skipped({required String path}) : this._(path: path, status: GeneratedFileStatus.skipped);
 
   /// {@macro generated_file}
-  const GeneratedFile.identical({required String path})
-      : this._(path: path, status: GeneratedFileStatus.identical);
+  const GeneratedFile.identical({required String path}) : this._(path: path, status: GeneratedFileStatus.identical);
 
   /// The file path.
   final String path;
@@ -199,9 +197,7 @@ abstract class Generator implements Comparable<Generator> {
   /// Add a new template file.
   void addTemplateFile(TemplateFile? file) {
     if (file == null) return;
-    _partialRegExp.hasMatch(file.path)
-        ? partials.addAll({file.path: file.content})
-        : files.add(file);
+    _partialRegExp.hasMatch(file.path) ? partials.addAll({file.path: file.content}) : files.add(file);
   }
 
   /// Generates files based on the provided [GeneratorTarget] and [vars].
@@ -255,8 +251,7 @@ abstract class Generator implements Comparable<Generator> {
   }
 
   @override
-  int compareTo(Generator other) =>
-      id.toLowerCase().compareTo(other.id.toLowerCase());
+  int compareTo(Generator other) => id.toLowerCase().compareTo(other.id.toLowerCase());
 
   @override
   String toString() => '[$id: $description]';
@@ -340,10 +335,7 @@ class DirectoryGeneratorTarget extends GeneratorTarget {
     final fileExists = file.existsSync();
 
     if (!fileExists) {
-      await file
-          .create(recursive: true)
-          .then<File>((_) => file.writeAsBytes(contents))
-          .whenComplete(
+      await file.create(recursive: true).then<File>((_) => file.writeAsBytes(contents)).whenComplete(
             () => logger?.delayed('  ${file.path} ${lightGreen.wrap('(new)')}'),
           );
       return GeneratedFile.created(path: file.path);
@@ -382,8 +374,7 @@ class DirectoryGeneratorTarget extends GeneratorTarget {
       case OverwriteRule.appendOnce:
       case OverwriteRule.alwaysAppend:
       case null:
-        final shouldAppend = _overwriteRule == OverwriteRule.appendOnce ||
-            _overwriteRule == OverwriteRule.alwaysAppend;
+        final shouldAppend = _overwriteRule == OverwriteRule.appendOnce || _overwriteRule == OverwriteRule.alwaysAppend;
         await file
             .create(recursive: true)
             .then<File>(
@@ -402,9 +393,7 @@ class DirectoryGeneratorTarget extends GeneratorTarget {
                     ),
             );
 
-        return shouldAppend
-            ? GeneratedFile.appended(path: file.path)
-            : GeneratedFile.overwritten(path: file.path);
+        return shouldAppend ? GeneratedFile.appended(path: file.path) : GeneratedFile.overwritten(path: file.path);
     }
   }
 }
@@ -429,8 +418,7 @@ abstract class GeneratorTarget {
 /// {@endtemplate}
 class TemplateFile {
   /// {@macro template_file}
-  TemplateFile(String path, String content)
-      : this.fromBytes(path, utf8.encode(content));
+  TemplateFile(String path, String content) : this.fromBytes(path, utf8.encode(content));
 
   /// {@macro template_file}
   TemplateFile.fromBytes(this.path, this.content);
@@ -467,14 +455,9 @@ class TemplateFile {
       }
 
       final fileContents = <FileContents>{};
-      final parameterKeys =
-          parameters.keys.where((key) => parameters[key] is List).toList();
+      final parameterKeys = parameters.keys.where((key) => parameters[key] is List).toList();
       final permutations = _Permutations<dynamic>(
-        [
-          ...parameters.entries
-              .where((entry) => entry.value is List)
-              .map((entry) => entry.value as List)
-        ],
+        [...parameters.entries.where((entry) => entry.value is List).map((entry) => entry.value as List)],
       ).generate();
       for (final permutation in permutations) {
         final param = Map<String, dynamic>.of(parameters);
@@ -531,9 +514,7 @@ class FileContents {
     if (identical(this, other)) return true;
     final listEquals = const DeepCollectionEquality().equals;
 
-    return other is FileContents &&
-        other.path == path &&
-        listEquals(other.content, content);
+    return other is FileContents && other.path == path && listEquals(other.content, content);
   }
 
   @override

@@ -19,7 +19,8 @@ BrickYaml _$BrickYamlFromJson(Map json) => $checkedCreate(
             'environment',
             'repository',
             'vars',
-            'path'
+            'path',
+            'dependencies'
           ],
         );
         final val = BrickYaml(
@@ -38,6 +39,13 @@ BrickYaml _$BrickYamlFromJson(Map json) => $checkedCreate(
                   : const VarsConverter().fromJson(v)),
           repository: $checkedConvert('repository', (v) => v as String?),
           path: $checkedConvert('path', (v) => v as String?),
+          dependencies: $checkedConvert(
+              'dependencies',
+              (v) =>
+                  (v as Map?)?.map(
+                    (k, e) => MapEntry(k as String, BrickLocation.fromJson(e)),
+                  ) ??
+                  const <String, BrickLocation>{}),
         );
         return val;
       },
@@ -60,6 +68,8 @@ Map<String, dynamic> _$BrickYamlToJson(BrickYaml instance) {
   writeNotNull('repository', instance.repository);
   writeNotNull('vars', const VarsConverter().toJson(instance.vars));
   writeNotNull('path', instance.path);
+  val['dependencies'] =
+      instance.dependencies.map((k, e) => MapEntry(k, e.toJson()));
   return val;
 }
 
@@ -100,7 +110,7 @@ BrickVariableProperties _$BrickVariablePropertiesFromJson(Map json) =>
 Map<String, dynamic> _$BrickVariablePropertiesToJson(
     BrickVariableProperties instance) {
   final val = <String, dynamic>{
-    'type': _$BrickVariableTypeEnumMap[instance.type],
+    'type': _$BrickVariableTypeEnumMap[instance.type]!,
   };
 
   void writeNotNull(String key, dynamic value) {

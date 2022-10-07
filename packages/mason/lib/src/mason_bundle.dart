@@ -4,6 +4,7 @@ import 'package:archive/archive.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mason/src/brick_yaml.dart';
 import 'package:mason/src/compute.dart';
+import 'package:mason/src/mason_yaml.dart';
 
 part 'mason_bundle.g.dart';
 
@@ -16,8 +17,7 @@ class MasonBundledFile {
   const MasonBundledFile(this.path, this.data, this.type);
 
   /// Converts a [Map<String, dynamic>] into a [MasonBundledFile].
-  factory MasonBundledFile.fromJson(Map<String, dynamic> json) =>
-      _$MasonBundledFileFromJson(json);
+  factory MasonBundledFile.fromJson(Map<String, dynamic> json) => _$MasonBundledFileFromJson(json);
 
   /// The relative file path
   final String path;
@@ -50,11 +50,11 @@ class MasonBundle {
     this.readme,
     this.changelog,
     this.license,
+    this.dependencies = const <String, BrickLocation>{},
   });
 
   /// Converts a [Map<String, dynamic>] into a [MasonBundle] instance.
-  factory MasonBundle.fromJson(Map<String, dynamic> json) =>
-      _$MasonBundleFromJson(json);
+  factory MasonBundle.fromJson(Map<String, dynamic> json) => _$MasonBundleFromJson(json);
 
   /// Converts a universal bundle into a [MasonBundle] instance.
   static Future<MasonBundle> fromUniversalBundle(List<int> bytes) async {
@@ -113,6 +113,9 @@ class MasonBundle {
   /// All required variables for the brick (from the `brick.yaml`).
   @VarsConverter()
   final Map<String, BrickVariableProperties> vars;
+
+  /// All required dependencies for the brick (from the `brick.yaml`).
+  final Map<String, BrickLocation> dependencies;
 
   /// Converts a [MasonBundle] into a [Map<String, dynamic>].
   Map<String, dynamic> toJson() => _$MasonBundleToJson(this);

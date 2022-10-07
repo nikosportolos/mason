@@ -47,7 +47,8 @@ MasonBundle _$MasonBundleFromJson(Map json) => $checkedCreate(
             'readme',
             'changelog',
             'license',
-            'vars'
+            'vars',
+            'dependencies'
           ],
         );
         final val = MasonBundle(
@@ -99,6 +100,13 @@ MasonBundle _$MasonBundleFromJson(Map json) => $checkedCreate(
                   ? null
                   : MasonBundledFile.fromJson(
                       Map<String, dynamic>.from(v as Map))),
+          dependencies: $checkedConvert(
+              'dependencies',
+              (v) =>
+                  (v as Map?)?.map(
+                    (k, e) => MapEntry(k as String, BrickLocation.fromJson(e)),
+                  ) ??
+                  const <String, BrickLocation>{}),
         );
         return val;
       },
@@ -125,5 +133,7 @@ Map<String, dynamic> _$MasonBundleToJson(MasonBundle instance) {
   writeNotNull('changelog', instance.changelog?.toJson());
   writeNotNull('license', instance.license?.toJson());
   writeNotNull('vars', const VarsConverter().toJson(instance.vars));
+  val['dependencies'] =
+      instance.dependencies.map((k, e) => MapEntry(k, e.toJson()));
   return val;
 }
