@@ -79,8 +79,7 @@ class _MakeCommand extends MasonCommand {
       p.join(cwd.path, results['output-dir'] as String),
     );
     final configPath = results['config-path'] as String?;
-    final fileConflictResolution =
-        (results['on-conflict'] as String).toFileConflictResolution();
+    final fileConflictResolution = (results['on-conflict'] as String).toFileConflictResolution();
     final setExitIfChanged = results['set-exit-if-changed'] as bool;
     final target = DirectoryGeneratorTarget(Directory(outputDir));
     final disableHooks = results['no-hooks'] as bool;
@@ -106,8 +105,7 @@ class _MakeCommand extends MasonCommand {
       if (arg != null) {
         vars.addAll(<String, dynamic>{variable: _maybeDecode(arg)});
       } else {
-        final prompt =
-            '''${styleBold.wrap(lightGreen.wrap('?'))} ${properties.prompt ?? variable}''';
+        final prompt = '''${styleBold.wrap(lightGreen.wrap('?'))} ${properties.prompt ?? variable}''';
         late final dynamic response;
         switch (properties.type) {
           case BrickVariableType.string:
@@ -155,8 +153,7 @@ class _MakeCommand extends MasonCommand {
             response = logger.chooseAny(
               prompt,
               choices: choices,
-              defaultValues:
-                  (properties.defaultValues as List?)?.cast<String>(),
+              defaultValues: (properties.defaultValues as List?)?.cast<String>(),
             );
             break;
         }
@@ -173,6 +170,14 @@ class _MakeCommand extends MasonCommand {
         onVarsChanged: (vars) => updatedVars = vars,
       );
     }
+
+    await _makeBrickDependencies(
+      brick: _brick.name,
+      dependencies: _brick.dependencies,
+      target: target,
+      vars: updatedVars ?? vars,
+      fileConflictResolution: fileConflictResolution,
+    );
 
     final generateProgress = logger.progress('Making ${generator.id}');
     try {
@@ -218,6 +223,56 @@ class _MakeCommand extends MasonCommand {
       return value;
     }
   }
+
+  Future<void> _makeBrickDependencies({
+    required String brick,
+    required DirectoryGeneratorTarget target,
+    required Map<String, BrickLocation> dependencies,
+    Map<String, dynamic> vars = const <String, dynamic>{},
+    FileConflictResolution? fileConflictResolution,
+  }) async {
+    if (dependencies.isEmpty) {
+      return;
+    }
+
+    final dependenciesProgress = logger.progress(
+      'Making brick dependencies of $brick',
+    );
+
+    var filesCount = 0;
+    try {
+      for (final dependency in dependencies.entries) {
+        final depGenerator = await MasonGenerator.fromBrick(
+          Brick(name: dependency.key, location: dependency.value),
+        );
+
+        for (final d in depGenerator.dependencies.entries) {
+          await _makeBrickDependencies(
+            brick: d.key,
+            target: target,
+            dependencies: depGenerator.dependencies,
+            vars: vars,
+            fileConflictResolution: fileConflictResolution,
+          );
+        }
+
+        final files = await depGenerator.generate(
+          target,
+          vars: vars,
+          fileConflictResolution: fileConflictResolution,
+          logger: logger,
+        );
+        filesCount = files.length;
+      }
+    } catch (_) {
+      dependenciesProgress.fail();
+      rethrow;
+    }
+    dependenciesProgress.complete(
+      'Made brick dependencies of $brick',
+    );
+    logger.logFilesGenerated(filesCount);
+  }
 }
 
 extension on GeneratedFile {
@@ -254,8 +309,7 @@ extension on BrickVariableType {
 extension on BrickVariableProperties {
   String toHelp() {
     final _type = '<${type.name}>';
-    final _defaultValue =
-        type == BrickVariableType.string ? '"$defaultValue"' : '$defaultValue';
+    final _defaultValue = type == BrickVariableType.string ? '"$defaultValue"' : '$defaultValue';
     final defaultsTo = '(defaults to $_defaultValue)';
     if (description != null && defaultValue != null) {
       return '$description $_type\n$defaultsTo';
@@ -318,9 +372,7 @@ extension on String {
 extension on Logger {
   void logFilesChanged(int fileCount) {
     if (fileCount == 0) return info('${lightGreen.wrap('✓')} 0 files changed');
-    return fileCount == 1
-        ? err('${lightRed.wrap('✗')} $fileCount file changed')
-        : err('${lightRed.wrap('✗')} $fileCount files changed');
+    return fileCount == 1 ? err('${lightRed.wrap('✗')} $fileCount file changed') : err('${lightRed.wrap('✗')} $fileCount files changed');
   }
 
   void logFilesGenerated(int fileCount) {

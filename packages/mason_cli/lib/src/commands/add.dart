@@ -4,6 +4,7 @@ import 'package:checked_yaml/checked_yaml.dart';
 import 'package:mason/mason.dart';
 import 'package:mason_cli/src/command.dart';
 import 'package:mason_cli/src/install_brick.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 
 /// {@template add_command}
@@ -86,8 +87,17 @@ class AddCommand extends MasonCommand with InstallBrickMixin {
     final bricks = Map.of(masonYaml.bricks)..addAll({name: location});
     final addProgress = logger.progress('Adding ${brickYaml.name}');
     try {
-      if (!masonYaml.bricks.containsKey(name)) {
-        await masonYamlFile.writeAsString(
+      final dependencies = await _handleBrickDependencies(
+        brick: brick.name!,
+        dependencies: brickYaml.dependencies,
+        targetMasonYaml: targetMasonYaml,
+        targetMasonYamlFile: targetMasonYamlFile,
+        isGlobal: isGlobal,
+      );
+      bricks.addAll(dependencies);
+
+      if (!targetMasonYaml.bricks.containsKey(name)) {
+        await targetMasonYamlFile.writeAsString(
           Yaml.encode(MasonYaml(bricks).toJson()),
         );
       }
@@ -96,6 +106,76 @@ class AddCommand extends MasonCommand with InstallBrickMixin {
       addProgress.fail();
       rethrow;
     }
+
     return ExitCode.success.code;
+  }
+
+  Future<Map<String, BrickLocation>> _handleBrickDependencies({
+    required String brick,
+    required Map<String, BrickLocation> dependencies,
+    required MasonYaml targetMasonYaml,
+    required File targetMasonYamlFile,
+    bool isGlobal = false,
+  }) async {
+    if (dependencies.isEmpty) {
+      return {};
+    }
+
+    final dependenciesProgress = logger.progress(
+      'Adding brick dependencies of $brick',
+    );
+
+    final bricks = Map.of(targetMasonYaml.bricks);
+
+    try {
+      for (final dependency in dependencies.entries) {
+        final depBrick = Brick(
+          name: dependency.key,
+          location: dependency.value,
+        );
+
+        final dependencies = await _addBrickDependency(
+          brick: depBrick,
+          targetMasonYaml: targetMasonYaml,
+          targetMasonYamlFile: targetMasonYamlFile,
+        );
+        bricks.addAll(dependencies);
+
+        // Add brick in queue for mason.yaml
+        if (!bricks.containsKey(depBrick.name)) {
+          bricks.addAll({depBrick.name!: depBrick.location});
+        }
+      }
+
+      dependenciesProgress.complete('Added brick dependencies of $brick');
+    } catch (_) {
+      dependenciesProgress.fail();
+      rethrow;
+    }
+    return bricks;
+  }
+
+  Future<Map<String, BrickLocation>> _addBrickDependency({
+    required Brick brick,
+    required MasonYaml targetMasonYaml,
+    required File targetMasonYamlFile,
+    bool isGlobal = false,
+  }) async {
+    // Add brick
+    await addBrick(brick, global: isGlobal);
+
+    // Add brick's dependencies recursively (if any)
+    final generator = await MasonGenerator.fromBrick(brick);
+    if (generator.dependencies.isNotEmpty) {
+      final dependencies = await _handleBrickDependencies(
+        brick: brick.name!,
+        dependencies: generator.dependencies,
+        targetMasonYaml: targetMasonYaml,
+        targetMasonYamlFile: targetMasonYamlFile,
+      );
+      return dependencies;
+    } else {
+      return {};
+    }
   }
 }
