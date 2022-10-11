@@ -171,14 +171,6 @@ class _MakeCommand extends MasonCommand {
       );
     }
 
-    await _makeBrickDependencies(
-      brick: _brick.name,
-      dependencies: _brick.dependencies,
-      target: target,
-      vars: updatedVars ?? vars,
-      fileConflictResolution: fileConflictResolution,
-    );
-
     final generateProgress = logger.progress('Making ${generator.id}');
     try {
       final files = await generator.generate(
@@ -222,56 +214,6 @@ class _MakeCommand extends MasonCommand {
     } catch (_) {
       return value;
     }
-  }
-
-  Future<void> _makeBrickDependencies({
-    required String brick,
-    required DirectoryGeneratorTarget target,
-    required Map<String, BrickLocation> dependencies,
-    Map<String, dynamic> vars = const <String, dynamic>{},
-    FileConflictResolution? fileConflictResolution,
-  }) async {
-    if (dependencies.isEmpty) {
-      return;
-    }
-
-    final dependenciesProgress = logger.progress(
-      'Making brick dependencies of $brick',
-    );
-
-    var filesCount = 0;
-    try {
-      for (final dependency in dependencies.entries) {
-        final depGenerator = await MasonGenerator.fromBrick(
-          Brick(name: dependency.key, location: dependency.value),
-        );
-
-        for (final d in depGenerator.dependencies.entries) {
-          await _makeBrickDependencies(
-            brick: d.key,
-            target: target,
-            dependencies: depGenerator.dependencies,
-            vars: vars,
-            fileConflictResolution: fileConflictResolution,
-          );
-        }
-
-        final files = await depGenerator.generate(
-          target,
-          vars: vars,
-          fileConflictResolution: fileConflictResolution,
-          logger: logger,
-        );
-        filesCount = files.length;
-      }
-    } catch (_) {
-      dependenciesProgress.fail();
-      rethrow;
-    }
-    dependenciesProgress.complete(
-      'Made brick dependencies of $brick',
-    );
-    logger.logFilesGenerated(filesCount);
   }
 }
 

@@ -53,7 +53,11 @@ MasonBundle createBundle(Directory brick) {
     brickYamlFile.readAsStringSync(),
     (m) => BrickYaml.fromJson(m!),
   );
-  final files = Directory(path.join(brick.path, BrickYaml.dir)).listSync(recursive: true).whereType<File>().map(_bundleBrickFile).toList();
+  final files = Directory(path.join(brick.path, BrickYaml.dir)) //
+      .listSync(recursive: true)
+      .whereType<File>()
+      .map(_bundleBrickFile)
+      .toList();
   final hooksDirectory = Directory(path.join(brick.path, BrickYaml.hooks));
   final hooks = hooksDirectory.existsSync()
       ? hooksDirectory

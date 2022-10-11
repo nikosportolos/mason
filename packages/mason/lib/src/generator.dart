@@ -120,6 +120,90 @@ class MasonGenerator extends Generator {
 
   /// Optional list of brick dependencies.
   final Map<String, BrickLocation> dependencies;
+
+  /// Generates files based on the provided [GeneratorTarget] and [vars].
+  /// Returns a list of [GeneratedFile].
+  @override
+  Future<List<GeneratedFile>> generate(
+    GeneratorTarget target, {
+    Map<String, dynamic> vars = const <String, dynamic>{},
+    FileConflictResolution? fileConflictResolution,
+    Logger? logger,
+  }) async {
+    return [
+      ...await _generateBrickDependencies(
+        brickName: id,
+        dependencies: dependencies,
+        vars: vars,
+        target: target,
+        fileConflictResolution: fileConflictResolution,
+        logger: logger ?? Logger(),
+      ),
+      ...await super.generate(
+        target,
+        vars: vars,
+        fileConflictResolution: fileConflictResolution,
+        logger: logger,
+      ),
+    ];
+  }
+
+  /// Generates the provided list of [BrickDependency]
+  /// and returns a list of [GeneratedFile]
+  Future<List<GeneratedFile>> _generateBrickDependencies({
+    required String brickName,
+    required GeneratorTarget target,
+    required Map<String, BrickLocation> dependencies,
+    Map<String, dynamic> vars = const <String, dynamic>{},
+    FileConflictResolution? fileConflictResolution,
+    required Logger logger,
+  }) async {
+    if (dependencies.isEmpty) {
+      return const [];
+    }
+
+    final progress = logger.progress(
+      'Generating brick dependencies of $brickName',
+    );
+
+    var fileCount = 0;
+    final generatedFiles = <GeneratedFile>[];
+
+    try {
+      for (final dependency in dependencies.entries) {
+        final depGenerator = await MasonGenerator.fromBrick(
+          Brick(name: dependency.key, location: dependency.value),
+        );
+
+        progress.update('Generating ${dependency.key}');
+
+        generatedFiles.addAll(
+          await depGenerator.generate(
+            target,
+            vars: vars,
+            fileConflictResolution: fileConflictResolution,
+            logger: logger,
+          ),
+        );
+
+        fileCount = generatedFiles.length;
+      }
+
+      progress.complete(
+        'Generated brick dependencies of $brickName',
+      );
+
+      logger.info(
+        '${lightGreen.wrap('✓')} '
+        'Generated $fileCount file(s):',
+      );
+
+      return generatedFiles;
+    } catch (_) {
+      progress.fail();
+      rethrow;
+    }
+  }
 }
 
 /// The status of a generated file.

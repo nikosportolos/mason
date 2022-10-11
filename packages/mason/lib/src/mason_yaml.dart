@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:json_annotation/json_annotation.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 
 part 'mason_yaml.g.dart';
@@ -12,12 +13,10 @@ part 'mason_yaml.g.dart';
 @JsonSerializable()
 class MasonYaml {
   /// {@macro mason_yaml}
-  const MasonYaml(Map<String, BrickLocation>? bricks)
-      : bricks = bricks ?? const <String, BrickLocation>{};
+  const MasonYaml(Map<String, BrickLocation>? bricks) : bricks = bricks ?? const <String, BrickLocation>{};
 
   /// Converts [Map] to [MasonYaml]
-  factory MasonYaml.fromJson(Map<dynamic, dynamic> json) =>
-      _$MasonYamlFromJson(json);
+  factory MasonYaml.fromJson(Map<dynamic, dynamic> json) => _$MasonYamlFromJson(json);
 
   /// Converts [MasonYaml] to [Map]
   Map<dynamic, dynamic> toJson() => _$MasonYamlToJson(this);
@@ -52,6 +51,7 @@ class MasonYaml {
 ///
 /// Used by [MasonYaml].
 /// {@endtemplate}
+@immutable
 @JsonSerializable()
 class BrickLocation {
   /// {@macro brick_location}
@@ -77,19 +77,38 @@ class BrickLocation {
 
   /// Brick version constraint.
   final String? version;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is BrickLocation && //
+        other.runtimeType == runtimeType &&
+        other.path == path &&
+        other.git == git &&
+        other.version == version;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hashAll([
+      path.hashCode,
+      git.hashCode,
+      version.hashCode,
+    ]);
+  }
 }
 
 /// {@template git_path}
 /// Path to templates in git.
 /// {@endtemplate}
+@immutable
 @JsonSerializable()
 class GitPath {
   /// {@macro git_path}
   const GitPath(this.url, {String? path, this.ref}) : path = path ?? '';
 
   /// Converts [Map] to [MasonYaml]
-  factory GitPath.fromJson(Map<dynamic, dynamic> json) =>
-      _$GitPathFromJson(json);
+  factory GitPath.fromJson(Map<dynamic, dynamic> json) => _$GitPathFromJson(json);
 
   /// Converts [GitPath] to [Map]
   Map<dynamic, dynamic> toJson() => _$GitPathToJson(this);
@@ -103,4 +122,23 @@ class GitPath {
   /// Anything that git can use to identify a commit.
   /// Can be a branch name, tag, or commit hash.
   final String? ref;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is GitPath && //
+        other.runtimeType == runtimeType &&
+        other.url == url &&
+        other.path == path &&
+        other.ref == ref;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hashAll([
+      url.hashCode,
+      path.hashCode,
+      ref.hashCode,
+    ]);
+  }
 }
