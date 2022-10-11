@@ -83,6 +83,30 @@ void main() {
         expect(BrickYaml.fromJson(instance.toJson()), equals(instance));
       });
 
+      test('can be (de)serialized correctly with dependencies', () {
+        final instance = BrickYaml(
+          name: 'A',
+          description: 'descriptionA',
+          version: '1.0.0',
+          // ignore: prefer_const_literals_to_create_immutables
+          vars: {
+            'name': BrickVariableProperties.string(
+              description: 'the name',
+              defaultValue: 'Dash',
+              prompt: 'What is your name?',
+            )
+          },
+          dependencies: const {
+            'dependencyA': BrickLocation(version: '0.0.1'),
+            'dependencyB': BrickLocation(path: '../dependency_b'),
+            'dependencyC': BrickLocation(
+              git: GitPath('https://github.com/felangel/mason', ref: 'main'),
+            ),
+          },
+        );
+        expect(BrickYaml.fromJson(instance.toJson()), equals(instance));
+      });
+
       test('supports simple json format', () {
         const content = '''
 name: A
@@ -150,7 +174,16 @@ vars:
     prompt: What flavors do you want?
     values:
       - dev
-      - prod''';
+      - prod
+dependencies:
+  dependencyA: 0.0.1
+  dependencyB: 
+    path: ../dependency_b
+  dependencyC:
+    git: 
+      url: https://github.com/felangel/mason
+      ref: main
+''';
 
         final brickYaml = checkedYamlDecode(
           content,
@@ -199,6 +232,20 @@ vars:
               values: ['dev', 'prod'],
             ),
           ]),
+        );
+
+        expect(brickYaml.dependencies.entries.length, 3);
+        expect(
+          brickYaml.dependencies,
+          equals(
+            const {
+              'dependencyA': BrickLocation(version: '0.0.1'),
+              'dependencyB': BrickLocation(path: '../dependency_b'),
+              'dependencyC': BrickLocation(
+                git: GitPath('https://github.com/felangel/mason', ref: 'main'),
+              ),
+            },
+          ),
         );
       });
 
