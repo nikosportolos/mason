@@ -162,6 +162,10 @@ vars:
     description: Your name
     default: Dash
     prompt: What is your name?
+
+# The following defines the brick dependencies for the current brick.
+# dependencies:
+#   hello: 0.1.0
 ''';
 
   static String _brickReadmeContent(String name, String description) => '''
