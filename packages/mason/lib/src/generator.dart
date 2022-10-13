@@ -125,7 +125,7 @@ class MasonGenerator extends Generator {
   /// Returns a list of [GeneratedFile].
   @override
   Future<List<GeneratedFile>> generate(
-    GeneratorTarget target, {
+    DirectoryGeneratorTarget target, {
     Map<String, dynamic> vars = const <String, dynamic>{},
     FileConflictResolution? fileConflictResolution,
     Logger? logger,
@@ -152,7 +152,7 @@ class MasonGenerator extends Generator {
   /// and returns a list of [GeneratedFile]
   Future<List<GeneratedFile>> _generateBrickDependencies({
     required String brickName,
-    required GeneratorTarget target,
+    required DirectoryGeneratorTarget target,
     required Map<String, BrickLocation> dependencies,
     Map<String, dynamic> vars = const <String, dynamic>{},
     FileConflictResolution? fileConflictResolution,
@@ -177,6 +177,11 @@ class MasonGenerator extends Generator {
 
         progress.update('Generating ${dependency.key}');
 
+        await depGenerator.hooks.preGen(
+          vars: vars,
+          workingDirectory: target.dir.path,
+        );
+
         generatedFiles.addAll(
           await depGenerator.generate(
             target,
@@ -184,6 +189,11 @@ class MasonGenerator extends Generator {
             fileConflictResolution: fileConflictResolution,
             logger: logger,
           ),
+        );
+
+        await depGenerator.hooks.postGen(
+          vars: vars,
+          workingDirectory: target.dir.path,
         );
 
         fileCount = generatedFiles.length;
@@ -287,7 +297,7 @@ abstract class Generator implements Comparable<Generator> {
   /// Generates files based on the provided [GeneratorTarget] and [vars].
   /// Returns a list of [GeneratedFile].
   Future<List<GeneratedFile>> generate(
-    GeneratorTarget target, {
+    DirectoryGeneratorTarget target, {
     Map<String, dynamic> vars = const <String, dynamic>{},
     FileConflictResolution? fileConflictResolution,
     Logger? logger,
