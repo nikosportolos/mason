@@ -134,17 +134,20 @@ class AddCommand extends MasonCommand with InstallBrickMixin {
           location: dependency.value,
         );
 
+        // // Add brick in queue for mason.yaml
+        // if (!bricks.containsKey(depBrick.name)) {
+        //   bricks.addAll({depBrick.name!: depBrick.location});
+        // }
+
         final dependencies = await _addBrickDependency(
           brick: depBrick,
           targetMasonYaml: targetMasonYaml,
           targetMasonYamlFile: targetMasonYamlFile,
         );
-        bricks.addAll(dependencies);
 
-        // Add brick in queue for mason.yaml
-        if (!bricks.containsKey(depBrick.name)) {
-          bricks.addAll({depBrick.name!: depBrick.location});
-        }
+        // Add brick's dependencies in queue for mason.yaml
+        // bricks.addAll(dependencies);
+
       }
 
       dependenciesProgress.complete('Added brick dependencies of $brick');
