@@ -1,10 +1,8 @@
 import 'dart:io';
-
 import 'package:checked_yaml/checked_yaml.dart';
 import 'package:mason/mason.dart';
 import 'package:mason_cli/src/command.dart';
 import 'package:mason_cli/src/install_brick.dart';
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 
 /// {@template add_command}
@@ -90,14 +88,14 @@ class AddCommand extends MasonCommand with InstallBrickMixin {
       final dependencies = await _handleBrickDependencies(
         brick: brick.name!,
         dependencies: brickYaml.dependencies,
-        targetMasonYaml: targetMasonYaml,
-        targetMasonYamlFile: targetMasonYamlFile,
+        targetMasonYaml: masonYaml,
+        targetMasonYamlFile: masonYamlFile,
         isGlobal: isGlobal,
       );
       bricks.addAll(dependencies);
 
-      if (!targetMasonYaml.bricks.containsKey(name)) {
-        await targetMasonYamlFile.writeAsString(
+      if (!masonYaml.bricks.containsKey(name)) {
+        await masonYamlFile.writeAsString(
           Yaml.encode(MasonYaml(bricks).toJson()),
         );
       }
